@@ -1,5 +1,27 @@
 import pygame
 
+class Cartridge:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+        # program ROM and character ROM
+        self.prg_rom = bytearray()
+        self.chr_rom = bytearray()
+
+        self.mapper = 0
+        self.mirroring = "VERTICAL"
+        self.has_battery = False
+        self.has_trainer = False
+
+        self._load_nes_file()
+
+    def _load_nes_file(self):
+        with open(self.file_path, "rb") as f:
+            ...
+
+
+        
+
 NES_WIDTH = 256
 NES_HEIGHT = 240
 
@@ -14,7 +36,7 @@ screen = pygame.display.set_mode((width, height))
 
 canvas  = pygame.Surface((NES_WIDTH, NES_HEIGHT))
 
-pygame.display_set_caption("EMULATOR 3000")
+pygame.display.set_caption("EMULATOR 3000")
 
 clock = pygame.time.Clock()
 
