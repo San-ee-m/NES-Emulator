@@ -1,0 +1,19 @@
+import pygame
+
+NES_WIDTH = 256
+NES_HEIGHT = 240
+
+Scale = 3
+
+width = NES_WIDTH * Scale
+height = NES_HEIGHT * Scale
+
+pygame.init()
+
+screen = pygame.display.set_mode((width, height))
+
+canvas  = pygame.Surface((NES_WIDTH, NES_HEIGHT))
+
+pygame.display_set_caption("EMULATOR 3000")
+
+clock = pygame.time.Clock()
