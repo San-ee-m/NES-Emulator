@@ -82,46 +82,80 @@ class Cartridge:
     def ppu_write(self, address, value):
         if 0x0000 <= address <= 0x1FFF:
             self.chr_rom[address] = value & 0xFF
-            
 
+
+def rebind_keys():
+    ...
+
+def nes_controller_state(key_binds):
+    keys = pygame.key.get_pressed()
+
+    # NES bit layout: A, B, Select, Start, Up, Down, Left, Right
+    buttons = ["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"]
+    state = 0
+    for b_index , button in enumerate(buttons):
+        if keys[key_binds[button]]:
+            state |= (1 << b_index)
+    return state
+
+
+def main():
+    NES_WIDTH = 256
+    NES_HEIGHT = 240
+
+    Scale = 3
+
+    width = NES_WIDTH * Scale
+    height = NES_HEIGHT * Scale
+
+    pygame.init()
+
+    screen = pygame.display.set_mode((width, height))
+
+    canvas  = pygame.Surface((NES_WIDTH, NES_HEIGHT))
+
+
+    pygame.display.set_caption("EMULATOR 3000")
+
+    # Setting up key bindings 
+
+    key_binds = {
+        "A":pygame.K_a,"B":pygame.K_b,
+        "SELECT":pygame.K_a,
+        "START":pygame.K_z,
+        "UP":pygame.K_UP,
+        "DOWN":pygame.K_DOWN,
+        "LEFT":pygame.K_LEFT,
+        "RIGHT":pygame.K_RIGHT
+        }
+
+    current_mode = "PLAY"
+    rebind_queue = []
+    current_rebind_button = None
+
+    clock = pygame.time.Clock()
+
+    running = True  
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        #CPU here  and PPU here
+
+        #Clear the canvas
+        canvas.fill((0, 0, 0))  
+        pygame.draw.rect(canvas,(255, 0, 0), (50, 50, 100, 100))  
+
+        #Scaling
+        scaled_screen = pygame.transform.scale(canvas,(width,height))
+        screen.blit(scaled_screen,(0,0))
+        pygame.display.flip()
         
+        # Cap the frame rate
+        clock.tick(60)
 
-NES_WIDTH = 256
-NES_HEIGHT = 240
+    pygame.quit()
 
-Scale = 3
-
-width = NES_WIDTH * Scale
-height = NES_HEIGHT * Scale
-
-pygame.init()
-
-screen = pygame.display.set_mode((width, height))
-
-canvas  = pygame.Surface((NES_WIDTH, NES_HEIGHT))
-
-pygame.display.set_caption("EMULATOR 3000")
-
-clock = pygame.time.Clock()
-
-running = True  
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    #CPU here  and PPU here
-
-    #Clear the canvas
-    canvas.fill((0, 0, 0))  
-    pygame.draw.rect(canvas,(255, 0, 0), (50, 50, 100, 100))  
-
-    #Scaling
-    scaled_screen = pygame.transform.scale(canvas,(width,height))
-    screen.blit(scaled_screen,(0,0))
-    pygame.display.flip()
-    
-    # Cap the frame rate
-    clock.tick(60)
-
-pygame.quit()
+if __name__ == "__main__":
+    main()
