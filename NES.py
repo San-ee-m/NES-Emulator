@@ -16,6 +16,9 @@ class Cartridge:
         self.has_battery = False
         self.has_trainer = False
 
+        #UROM state
+        self.selected_bank = 0
+
         self._load_nes_file()
 
     def _load_nes_file(self):
@@ -50,15 +53,26 @@ class Cartridge:
             else:
                 self.chr_rom = bytearray(8192)  # Allocate 8KB of CHR RAM if no CHR ROM is present
 
+            self.num_prg_banks = self.prg_rom_size # Default for UROM
+
+
     def cpu_read(self, address):
-        if 0x8000 <= address <= 0xFFFF:
-            mapped_address = address & (0x7FFF if self.prg_rom_size == 1 else 0xFFFF) 
-            return self.prg_rom[mapped_address]
+        if 0x8000 <= address <= 0xBFFF:
+            bank_offset = self.selected_bank * 16384
+            offset_bank = address - 0x8000
+            return self.prg_rom[bank_offset + offset_bank]
+        
+        elif 0x8000 <= address <= 0xFFFF:
+            last_bank = self.num_prg_banks - 1
+            bank_offset = last_bank * 16384
+            offset_bank = address - 0xC000
+            return self.prg_rom[bank_offset + offset_bank]
+        
         return 0
 
-    def cpu_write(self, address):
+    def cpu_write(self, address,value):
         if 0x8000 <= address <= 0xFFFF:
-            pass
+            self.selected_bank = value & (self.prg_rom_size - 1)  # for Mapper 2
 
     def ppu_read(self, address):
         if 0x0000 <= address <= 0x1FFF:
