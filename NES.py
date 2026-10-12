@@ -85,7 +85,10 @@ class Cartridge:
 
 
 def rebind_keys():
-    ...
+    global current_mode, rebind_queue, current_rebind_button
+    rebind_queue = ["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"]
+    current_rebind_button = rebind_queue.pop(0)
+    current_mode = "REBIND"
 
 def nes_controller_state(key_binds):
     keys = pygame.key.get_pressed()
@@ -109,11 +112,13 @@ def main():
     height = NES_HEIGHT * Scale
 
     pygame.init()
+    
 
     screen = pygame.display.set_mode((width, height))
 
     canvas  = pygame.Surface((NES_WIDTH, NES_HEIGHT))
 
+    font = pygame.font.Font(None, 26)
 
     pygame.display.set_caption("EMULATOR 3000")
 
@@ -141,12 +146,41 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        #CPU here  and PPU here
+            if current_mode == "PLAY":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_TAB:
+                        rebind_keys()
+            elif current_mode == "REBIND":
+                if event.type == pygame.KEYDOWN:
+                    key_binds[current_rebind_button] = event.key
 
-        #Clear the canvas
-        canvas.fill((0, 0, 0))  
-        pygame.draw.rect(canvas,(255, 0, 0), (50, 50, 100, 100))  
+                    if rebind_queue:
+                        current_rebind_button = rebind_queue.pop(0)
+                    else:
+                        current_mode = "PLAY"
+                        current_rebind_button = None
 
+
+        #Render Screen Info
+        screen.fill((30,30,30)) 
+
+        if current_mode == "PLAY":
+            text1 = font.render("Mode: Playing", True, (255, 255, 255))
+            text2 = font.render("Press TAB to rebind keys", True, (255, 255, 255))
+            screen.blit(text1, (20, 20))
+            screen.blit(text2, (20, 50))
+
+            controller_byte = nes_controller_state(key_binds)
+            ctrl_text = font.render(f"Controller Byte: {bin(controller_byte)}", True, (255, 255, 255))
+            screen.blit(ctrl_text,(20,100))
+
+        elif current_mode == "REBIND":
+            text1 = font.render("Mode: Rebinding Keys", True, (255, 255, 255))
+            text2 = font.render(f"Press a key for {current_rebind_button}", True, (255, 255, 255))
+            screen.blit(text1, (20, 20))
+            screen.blit(text2, (20, 50))
+
+        
         #Scaling
         scaled_screen = pygame.transform.scale(canvas,(width,height))
         screen.blit(scaled_screen,(0,0))
