@@ -1,4 +1,11 @@
 import pygame
+import sys
+import os
+#from bus import Bus
+#from cpu import CPU6502
+
+# Mappers that the NES can handle for now
+supported_mappers = (0,2)
 
 class Cartridge:
     def __init__(self, file_path):
@@ -15,6 +22,7 @@ class Cartridge:
         self.mirroring = "VERTICAL"
         self.has_battery = False
         self.has_trainer = False
+        self.has_chr_ram = False
 
         #UROM state
         self.selected_bank = 0
@@ -35,9 +43,16 @@ class Cartridge:
 
             self.mapper = (flag_vert >> 4) | (flag_horiz & 0xF0)
 
+            if self.mapper not in supported_mappers:
+                raise ValueError(f"Mapper {self.mapper} is not supported yet")
+
+            if self.prg_rom_size == 0:
+                raise ValueError("ROM has no PRG data")
+
             self.mirroring = "VERTICAL" if (flag_vert & 0x01) else "HORIZONTAL"
             self.has_battery = bool(flag_vert & 0x02)
             self.has_trainer = bool(flag_vert & 0x04)
+
 
             if self.has_trainer:
                 f.read(512)  # Skip trainer data
@@ -48,10 +63,14 @@ class Cartridge:
 
             # Read CHR ROM data
             chr_size = self.chr_rom_size * 8192  # Each CHR ROM bank is 8KB
+
             if chr_size > 0:
                 self.chr_rom = bytearray(f.read(chr_size))  # load file
+                self.has_chr_ram = False
             else:
                 self.chr_rom = bytearray(8192)  # Allocate 8KB of CHR RAM if no CHR ROM is present
+                self.has_chr_ram = True
+
 
             self.num_prg_banks = self.prg_rom_size # Default for UROM
 
@@ -62,7 +81,7 @@ class Cartridge:
             offset_bank = address - 0x8000
             return self.prg_rom[bank_offset + offset_bank]
         
-        elif 0x8000 <= address <= 0xFFFF:
+        elif 0xC000 <= address <= 0xFFFF:
             last_bank = self.num_prg_banks - 1
             bank_offset = last_bank * 16384
             offset_bank = address - 0xC000
@@ -71,7 +90,7 @@ class Cartridge:
         return 0
 
     def cpu_write(self, address,value):
-        if 0x8000 <= address <= 0xFFFF:
+        if self.mapper == 2 and 0x8000 <= address <= 0xFFFF:
             self.selected_bank = value & (self.prg_rom_size - 1)  # for Mapper 2
 
     def ppu_read(self, address):
@@ -80,15 +99,11 @@ class Cartridge:
         return 0
 
     def ppu_write(self, address, value):
-        if 0x0000 <= address <= 0x1FFF:
+        if self.has_chr_ram and 0x0000 <= address <= 0x1FFF:
             self.chr_rom[address] = value & 0xFF
 
 
-def rebind_keys():
-    global current_mode, rebind_queue, current_rebind_button
-    rebind_queue = ["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"]
-    current_rebind_button = rebind_queue.pop(0)
-    current_mode = "REBIND"
+    
 
 def nes_controller_state(key_binds):
     keys = pygame.key.get_pressed()
@@ -122,11 +137,24 @@ def main():
 
     pygame.display.set_caption("EMULATOR 3000")
 
+    # load Rom , if Error show message
+    cartridge = None
+    rom_info = "No ROM loaded(run: python NES.py game.nes)"
+    if len(sys.argv)> 1:
+        try:
+            cartridge = Cartridge(sys.argv[1])
+            rom_info = (f"ROM: {os.path.basename(sys.argv[1])}  "
+                        f"Mapper: {cartridge.mapper}  "
+                        f"PRG banks: {cartridge.num_prg_banks}")
+
+        except (ValueError,OSError) as e:
+            rom_info = f"Could not load ROM:{e}"
+
     # Setting up key bindings 
 
     key_binds = {
         "A":pygame.K_a,"B":pygame.K_b,
-        "SELECT":pygame.K_a,
+        "SELECT":pygame.K_s,
         "START":pygame.K_z,
         "UP":pygame.K_UP,
         "DOWN":pygame.K_DOWN,
@@ -147,9 +175,11 @@ def main():
                 running = False
 
             if current_mode == "PLAY":
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_TAB:
-                        rebind_keys()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                    current_mode = "REBIND"
+                    rebind_queue = ["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"]
+                    current_rebind_button = rebind_queue.pop(0)
+            
             elif current_mode == "REBIND":
                 if event.type == pygame.KEYDOWN:
                     key_binds[current_rebind_button] = event.key
@@ -162,7 +192,10 @@ def main():
 
 
         #Render Screen Info
-        screen.fill((30,30,30)) 
+        screen.fill((30,30,30))
+        scaled_screen = pygame.transform.scale(canvas,(width,height))
+        screen.blit(scaled_screen,(0,0))
+                 
 
         if current_mode == "PLAY":
             text1 = font.render("Mode: Playing", True, (255, 255, 255))
@@ -171,21 +204,18 @@ def main():
             screen.blit(text2, (20, 50))
 
             controller_byte = nes_controller_state(key_binds)
-            ctrl_text = font.render(f"Controller Byte: {bin(controller_byte)}", True, (255, 255, 255))
+            ctrl_text = font.render(f"Controller Byte: {controller_byte:08b}", True, (255, 255, 255))
             screen.blit(ctrl_text,(20,100))
-
+            rom_text = font.render(rom_info,True,(255,255,255))
+            screen.blit(rom_text,(20,130))
         elif current_mode == "REBIND":
             text1 = font.render("Mode: Rebinding Keys", True, (255, 255, 255))
             text2 = font.render(f"Press a key for {current_rebind_button}", True, (255, 255, 255))
             screen.blit(text1, (20, 20))
             screen.blit(text2, (20, 50))
 
-        
-        #Scaling
-        scaled_screen = pygame.transform.scale(canvas,(width,height))
-        screen.blit(scaled_screen,(0,0))
         pygame.display.flip()
-        
+
         # Cap the frame rate
         clock.tick(60)
 
