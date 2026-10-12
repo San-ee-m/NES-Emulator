@@ -1,4 +1,4 @@
-# Note: This is written with AI assistance(not writing the entire cpu arch )
+# Note: This is written with AI assistance( I do not have timme for writing the entire cpu arch )
 
 
 """
