@@ -51,3 +51,40 @@ class CPU6502:
 
         # setting cycle to 7
         self.cycle = 7
+
+    def flag(self,mask):
+        # returns wether flag is on or off
+        return bool(self.status & mask)
+
+    def set_flag(self,mask,condition):
+        if condition:
+            self.status |= mask
+        else:
+            self.status &= ~mask & 0xFF
+
+    def zn_flag(self,value):
+        self.set_flag(z_flag,value == 0)
+        self.set_flag(n_flag,value & 0x80)
+        return value
+
+
+class FakeBus:
+    def read(self,a):
+        return 0
+    def write(self,a,v):
+        pass
+
+
+cpu = CPU6502(FakeBus)
+
+cpu.set_flag(c_flag,True)
+print(bin(cpu.status))
+
+cpu.zn_flag(0)
+print(bin(cpu.status))
+
+cpu.zn_flag(0X80)
+print(bin(cpu.status))
+
+cpu.set_flag(c_flag,False)
+print(bin(cpu.status))
